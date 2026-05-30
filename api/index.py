@@ -1,10 +1,19 @@
 from api.db import DB
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from os import environ
 
 app: FastAPI = FastAPI()
 db: DB = DB()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class EditorDocument(BaseModel):
     id: str
@@ -35,9 +44,9 @@ def main() -> None:
 
     production: bool = environ.get('PRODUCTION', 'false').lower() == 'true'
     if production:
-        uvicorn.run('backend:app', host='0.0.0.0', port=8000, workers=4)
+        uvicorn.run('index:app', host='0.0.0.0', port=8000, workers=4)
     else:
-        uvicorn.run('backend:app', host='0.0.0.0', port=8000, reload=True)
+        uvicorn.run('index:app', host='0.0.0.0', port=8000, reload=True)
 
 if __name__ == '__main__':
     main()
