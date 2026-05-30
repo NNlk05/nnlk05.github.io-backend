@@ -5,9 +5,6 @@ from pydantic import BaseModel
 from os import environ
 
 app: FastAPI = FastAPI()
-
-print(repr(environ.get("FIREBASE_CREDENTIALS_JSON", "")))
-
 db: DB = DB()
 
 app.add_middleware(
@@ -47,6 +44,15 @@ def get_document(document_id: str) -> DocumentResponse:
     if not doc:
         raise HTTPException(status_code=404, detail='Document not found')
     return DocumentResponse(id=doc['id'], content=doc['content'])
+
+@app.get("/debug")
+def debug():
+    value = environ.get("FIREBASE_CREDENTIALS_JSON", "")
+    return {
+        "length": len(value),
+        "starts_with": value[:50],
+        "ends_with": value[-50:]
+    }
 
 def main() -> None:
     import uvicorn
