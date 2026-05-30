@@ -1,13 +1,10 @@
 from db import DB
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from pathlib import Path
 from os import environ
-from a2wsgi import ASGIMiddleware
 
-app = FastAPI()
-db = DB(Path('documents.json'))
-wsgi_app = ASGIMiddleware(app) # pyright: ignore[reportArgumentType]
+app: FastAPI = FastAPI()
+db: DB = DB()
 
 class EditorDocument(BaseModel):
     id: str
@@ -20,7 +17,7 @@ class DocumentResponse(BaseModel):
 @app.post('/documents')
 def create_document(document: EditorDocument) -> DocumentResponse:
     db.create_collection('documents')
-    doc_id = db.insert('documents', {
+    db.insert('documents', {
         'id': document.id,
         'content': document.content
     })
@@ -28,7 +25,7 @@ def create_document(document: EditorDocument) -> DocumentResponse:
 
 @app.get('/documents/{document_id}')
 def get_document(document_id: str) -> DocumentResponse:
-    doc = db.find_one('documents', id=document_id)
+    doc: dict | None = db.find_one('documents', id=document_id)
     if not doc:
         raise HTTPException(status_code=404, detail='Document not found')
     return DocumentResponse(id=doc['id'], content=doc['content'])
@@ -38,9 +35,9 @@ def main() -> None:
 
     production: bool = environ.get('PRODUCTION', 'false').lower() == 'true'
     if production:
-        uvicorn.run(app, host='0.0.0.0', port=8000, workers=4)
+        uvicorn.run('backend:app', host='0.0.0.0', port=8000, workers=4)
     else:
-        uvicorn.run(app, host='0.0.0.0', port=8000)
+        uvicorn.run('backend:app', host='0.0.0.0', port=8000, reload=True)
 
 if __name__ == '__main__':
     main()
