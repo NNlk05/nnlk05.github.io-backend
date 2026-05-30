@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 from pathlib import Path
 from os import environ
+from a2wsgi import ASGIMiddleware
 
 app = FastAPI()
 db = DB(Path('documents.json'))
@@ -33,6 +34,7 @@ def get_document(document_id: str) -> DocumentResponse:
 
 def main() -> None:
     import uvicorn
+    wsgi_app = ASGIMiddleware(app) # pyright: ignore[reportArgumentType]
 
     production: bool = environ.get('PRODUCTION', 'false').lower() == 'true'
     if production:
