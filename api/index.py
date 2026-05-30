@@ -1,4 +1,4 @@
-from db import DB
+from api.db import DB
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from os import environ
