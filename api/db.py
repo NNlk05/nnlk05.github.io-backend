@@ -1,6 +1,7 @@
 from os import environ
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TypeVar
+import json
 import firebase_admin
 from firebase_admin import credentials, firestore
 
@@ -13,7 +14,11 @@ class DB:
         self.db = firestore.client()
 
     def _load_env_file(self) -> None:
-        env_path: Path = Path('.env')
+        current_dir: Path = Path(__file__).resolve().parent
+        env_path: Path = current_dir / '.env'
+        if not env_path.exists():
+            env_path = current_dir.parent / '.env'
+            
         if env_path.exists():
             with open(env_path, 'r') as f:
                 for line in f:
@@ -26,8 +31,27 @@ class DB:
 
     def _initialize_firebase(self) -> None:
         if not firebase_admin._apps:
-            key_path: str = environ.get('FIREBASE_KEY_PATH', '')
-            cred: credentials.Certificate = credentials.Certificate(key_path)
+            firebase_json: str = environ.get('FIREBASE_CREDENTIALS_JSON', '')
+            if firebase_json:
+                cred_dict: dict = json.loads(firebase_json)
+                cred: credentials.Certificate = credentials.Certificate(cred_dict)
+            else:
+                key_path: str = environ.get('FIREBASE_KEY_PATH', '')
+                if not key_path:
+                    raise ValueError("FIREBASE_KEY_PATH environment variable is not set in your .env file")
+                
+                resolved_path: Path = Path(key_path)
+                if not resolved_path.is_absolute():
+                    current_dir: Path = Path(__file__).resolve().parent
+                    if (current_dir / resolved_path).exists():
+                        resolved_path = current_dir / resolved_path
+                    elif (current_dir.parent / resolved_path).exists():
+                        resolved_path = current_dir.parent / resolved_path
+                
+                if not resolved_path.exists():
+                    raise FileNotFoundError(f"Firebase key file could not be found at: {resolved_path}")
+                
+                cred = credentials.Certificate(str(resolved_path))
             firebase_admin.initialize_app(cred)
 
     def create_collection(self, name: str) -> None:
