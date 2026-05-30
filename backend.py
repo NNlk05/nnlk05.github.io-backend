@@ -7,6 +7,7 @@ from a2wsgi import ASGIMiddleware
 
 app = FastAPI()
 db = DB(Path('documents.json'))
+wsgi_app = ASGIMiddleware(app) # pyright: ignore[reportArgumentType]
 
 class EditorDocument(BaseModel):
     id: str
@@ -34,7 +35,6 @@ def get_document(document_id: str) -> DocumentResponse:
 
 def main() -> None:
     import uvicorn
-    wsgi_app = ASGIMiddleware(app) # pyright: ignore[reportArgumentType]
 
     production: bool = environ.get('PRODUCTION', 'false').lower() == 'true'
     if production:
