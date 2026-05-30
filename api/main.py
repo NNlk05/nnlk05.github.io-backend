@@ -5,6 +5,9 @@ from pydantic import BaseModel
 from os import environ
 
 app: FastAPI = FastAPI()
+
+print(repr(environ.get("FIREBASE_CREDENTIALS_JSON", "")))
+
 db: DB = DB()
 
 app.add_middleware(
@@ -24,6 +27,10 @@ class EditorDocument(BaseModel):
 class DocumentResponse(BaseModel):
     id: str
     content: str
+
+@app.get("/")
+def root():
+    return {"status": "ok"}
 
 @app.post('/documents')
 def create_document(document: EditorDocument) -> DocumentResponse:
