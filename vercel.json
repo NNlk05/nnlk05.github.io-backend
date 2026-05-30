@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "index.py"
+      "destination": "api/main.py"
     }
   ],
   "headers": [
