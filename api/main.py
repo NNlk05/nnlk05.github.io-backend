@@ -45,15 +45,6 @@ def get_document(document_id: str) -> DocumentResponse:
         raise HTTPException(status_code=404, detail='Document not found')
     return DocumentResponse(id=doc['id'], content=doc['content'])
 
-@app.get("/debug")
-def debug():
-    value = environ.get("FIREBASE_CREDENTIALS_JSON", "")
-    return {
-        "length": len(value),
-        "starts_with": value[:50],
-        "ends_with": value[-50:]
-    }
-
 def main() -> None:
     import uvicorn
 
