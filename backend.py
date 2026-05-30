@@ -2,6 +2,7 @@ from db import DB
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 from pathlib import Path
+from os import environ
 
 app = FastAPI()
 db = DB(Path('documents.json'))
@@ -32,7 +33,12 @@ def get_document(document_id: str) -> DocumentResponse:
 
 def main() -> None:
     import uvicorn
-    uvicorn.run(app, host='0.0.0.0', port=8000)
+
+    production: bool = environ.get('PRODUCTION', 'false').lower() == 'true'
+    if production:
+        uvicorn.run(app, host='0.0.0.0', port=8000, workers=4)
+    else:
+        uvicorn.run(app, host='0.0.0.0', port=8000)
 
 if __name__ == '__main__':
     main()
