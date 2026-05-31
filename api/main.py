@@ -58,19 +58,8 @@ def get_document(document_id: str) -> DocumentResponse:
 
 @app.post('/discord')
 def send_discord_message(request: Request, message: DiscordMessage) -> dict:
-    try:
         post_to_discord(content=message.content, name=message.name)
         return {"status": "ok"}
-    except HTTPError as e:
-        content = content + f"\nError: {str(e)}"
-        for _ in range(3):
-            sleep(5)
-            try:
-                post_to_discord(content=message.content, name=message.name)
-                return {"status": "ok"}
-            except HTTPError:
-                continue
-        return {"status": "error", "detail": str(e)}
         
 
 def main() -> None:
