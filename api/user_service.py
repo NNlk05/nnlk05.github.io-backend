@@ -1,4 +1,5 @@
-from firebase_admin import auth
+import hashlib
+import secrets
 from .db import DB
 from typing import Optional, Dict, Any
 
@@ -6,50 +7,63 @@ class UserService:
     def __init__(self, db: DB) -> None:
         self.db: DB = db
 
-    def create_user(self, email: str, password: str, user_id: int) -> Dict[str, Any]:
-        try:
-            user_record = auth.create_user(
-                email=email,
-                password=password,
-                uid=str(user_id)
-            )
-            self.db.insert('users', {
-                'id': user_id,
-                'email': email,
-                'uid': user_record.uid
-            })
-            return {'user_id': user_id, 'email': email}
-        except auth.EmailAlreadyExistsError:
-            raise ValueError("Email already exists")
-        except Exception as e:
-            raise ValueError(f"Failed to create user: {str(e)}")
+    def _hash_password(self, password: str, salt: Optional[str] = None) -> tuple[str, str]:
+        if salt is None:
+            salt = secrets.token_hex(16)
+        hash_obj = hashlib.sha256()
+        hash_obj.update((password + salt).encode())
+        return hash_obj.hexdigest(), salt
+
+    def create_user(self, username: str, password: str, user_id: int) -> Dict[str, Any]:
+        if self.db.find_one('users', username=username):
+            raise ValueError("Username already exists")
+        
+        password_hash, salt = self._hash_password(password)
+        user_data = {
+            'id': user_id,
+            'username': username,
+            'password_hash': password_hash,
+            'salt': salt
+        }
+        self.db.insert('users', user_data)
+        return {'user_id': user_id, 'username': username}
 
     def get_user(self, user_id: int) -> Optional[Dict[str, Any]]:
         return self.db.find_one('users', id=user_id)
 
-    def update_user(self, user_id: int, email: Optional[str] = None, password: Optional[str] = None) -> Dict[str, Any]:
-        try:
-            if email:
-                auth.update_user(str(user_id), email=email)
-            if password:
-                auth.update_user(str(user_id), password=password)
-            
-            update_data: Dict[str, Any] = {}
-            if email:
-                update_data['email'] = email
-            
-            self.db.update('users', {'id': user_id}, update_data)
-            user = self.db.find_one('users', id=user_id)
+    def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
+        return self.db.find_one('users', username=username)
+
+    def verify_password(self, username: str, password: str) -> Optional[Dict[str, Any]]:
+        user = self.get_user_by_username(username)
+        if not user:
+            return None
+        
+        hash_to_check, _ = self._hash_password(password, user['salt'])
+        if hash_to_check == user['password_hash']:
             return user
-        except Exception as e:
-            raise ValueError(f"Failed to update user: {str(e)}")
+        return None
+
+    def update_user(self, user_id: int, username: Optional[str] = None, password: Optional[str] = None) -> Dict[str, Any]:
+        update_data: Dict[str, Any] = {}
+        if username:
+            update_data['username'] = username
+        if password:
+            user = self.get_user(user_id)
+            if not user:
+                raise ValueError("User not found")
+            password_hash, salt = self._hash_password(password)
+            update_data['password_hash'] = password_hash
+            update_data['salt'] = salt
+        
+        if update_data:
+            self.db.update('users', {'id': user_id}, update_data)
+        
+        return self.get_user(user_id)
 
     def delete_user(self, user_id: int) -> None:
-        try:
-            auth.delete_user(str(user_id))
-            self.db.delete('users', id=user_id)
-        except Exception as e:
-            raise ValueError(f"Failed to delete user: {str(e)}")
+        if not self.db.delete('users', id=user_id):
+            raise ValueError("User not found")
 
     def list_all_users(self) -> list[Dict[str, Any]]:
         return self.db.find_all('users')

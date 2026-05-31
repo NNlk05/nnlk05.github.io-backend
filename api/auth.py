@@ -1,6 +1,13 @@
-from firebase_admin import auth
-from fastapi import Depends, HTTPException, status
+import hmac
+import hashlib
+import base64
+import json
+from os import environ
+from fastapi import Depends, HTTPException, status, Header
 from pydantic import BaseModel
+from typing import Optional
+
+SECRET_KEY = environ.get("SECRET_KEY", "b06d2c81c02d680b571f5d0a1633b9eb5fe80502")
 
 class Token(BaseModel):
     access_token: str
@@ -8,28 +15,44 @@ class Token(BaseModel):
 
 class AuthUser(BaseModel):
     user_id: int
-    email: str
+    username: str
     is_root: bool
 
-async def get_current_user(authorization: str = None) -> AuthUser:
+def create_token(data: dict) -> str:
+    payload = base64.urlsafe_b64encode(json.dumps(data).encode()).decode()
+    signature = hmac.new(SECRET_KEY.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return f"{payload}.{signature}"
+
+def verify_token(token: str) -> Optional[dict]:
+    try:
+        payload_str, signature = token.split(".")
+        expected_signature = hmac.new(SECRET_KEY.encode(), payload_str.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(signature, expected_signature):
+            return None
+        return json.loads(base64.urlsafe_b64decode(payload_str).decode())
+    except Exception:
+        return None
+
+async def get_current_user(authorization: Optional[str] = Header(None)) -> AuthUser:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authorization header"
         )
     
-    id_token: str = authorization.split(" ")[1]
-    try:
-        decoded: dict = auth.verify_id_token(id_token)
-        email: str = decoded.get('email', '')
-        user_id: int = int(decoded.get('uid', '0'))
-        is_root: bool = user_id == 0
-        return AuthUser(user_id=user_id, email=email, is_root=is_root)
-    except Exception as e:
+    token: str = authorization.split(" ")[1]
+    decoded = verify_token(token)
+    if not decoded:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {str(e)}"
+            detail="Invalid or expired token"
         )
+    
+    return AuthUser(
+        user_id=decoded.get('user_id'),
+        username=decoded.get('username'),
+        is_root=decoded.get('is_root', False)
+    )
 
 def require_root(user: AuthUser = Depends(get_current_user)) -> AuthUser:
     if not user.is_root:
