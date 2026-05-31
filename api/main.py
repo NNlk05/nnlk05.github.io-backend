@@ -47,8 +47,8 @@ def root() -> dict[str, str]:
 def signup(user: UserCreate) -> UserResponse:
     db.create_collection('users')
     try:
-        user_service.create_user(username=user.username, password=user.password, user_id=user.user_id)
-        return UserResponse(user_id=user.user_id, username=user.username, is_root=user.user_id == 0)
+        new_user = user_service.create_user(username=user.username, password=user.password)
+        return UserResponse(user_id=new_user['user_id'], username=new_user['username'], is_root=new_user['user_id'] == 0)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

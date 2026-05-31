@@ -54,6 +54,22 @@ class DB:
                 cred = credentials.Certificate(str(resolved_path))
             firebase_admin.initialize_app(cred)
 
+    def _get_next_sequence_value(self, sequence_name: str) -> int:
+        sf_ref = self.db.collection('sequences').document(sequence_name)
+        
+        @firestore.transactional
+        def update_in_transaction(transaction):
+            snapshot = sf_ref.get(transaction=transaction)
+            current_value = 0
+            if snapshot.exists:
+                current_value = snapshot.get('value')
+            new_value = current_value + 1
+            transaction.set(sf_ref, {'value': new_value})
+            return new_value
+
+        transaction = self.db.transaction()
+        return update_in_transaction(transaction)
+
     def create_collection(self, name: str) -> None:
         pass
 

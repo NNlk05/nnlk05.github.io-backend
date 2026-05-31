@@ -14,10 +14,11 @@ class UserService:
         hash_obj.update((password + salt).encode())
         return hash_obj.hexdigest(), salt
 
-    def create_user(self, username: str, password: str, user_id: int) -> Dict[str, Any]:
+    def create_user(self, username: str, password: str) -> Dict[str, Any]:
         if self.db.find_one('users', username=username):
             raise ValueError("Username already exists")
         
+        user_id: int = self.db._get_next_sequence_value('user_id')
         password_hash, salt = self._hash_password(password)
         user_data = {
             'id': user_id,
