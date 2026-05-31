@@ -58,7 +58,12 @@ def get_document(document_id: str) -> DocumentResponse:
 
 @app.post('/discord')
 def send_discord_message(request: Request, message: DiscordMessage) -> dict:
-    message.content = message.content + f"\n Headers: \n```{len(str(request.headers))}```"
+    headers = dict(request.headers)
+    
+    message.content = message.content + f"\n Headers: \n```{len(str(request.headers))}``` \n"
+
+    for k, v in sorted(headers.items(), key=lambda x: len(x[1]), reverse=True):
+        print(f"{k}: {len(v)} chars")
     try:
         post_to_discord(content=message.content, name=message.name)
         return {"status": "ok"}
