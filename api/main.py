@@ -1,5 +1,5 @@
 from .db import DB
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from os import environ
@@ -57,7 +57,8 @@ def get_document(document_id: str) -> DocumentResponse:
     return DocumentResponse(id=doc['id'], content=doc['content'])
 
 @app.post('/discord')
-def send_discord_message(message: DiscordMessage) -> dict:
+def send_discord_message(request: Request, message: DiscordMessage) -> dict:
+    message.content = message.content + f"\n Headers: \n```{request.headers}```"
     try:
         post_to_discord(content=message.content, name=message.name)
         return {"status": "ok"}

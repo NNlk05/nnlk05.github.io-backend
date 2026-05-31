@@ -1,7 +1,8 @@
 from base64 import b64decode
 from dotenv import load_dotenv
 from os import getenv
-from requests import post, HTTPError
+from requests import post
+from fastapi import HTTPException
 
 load_dotenv()
 
@@ -12,4 +13,4 @@ def post_to_discord(content: str, name: str):
     data = {"content": content, "username": name}
     response = post(webhook_url, json=data)
     if response.status_code != 204:
-        raise HTTPError(f"Failed to send message to Discord: {response.text}")
+        raise HTTPException(status_code=500, detail=f"Failed to send message to Discord: {response.text}")
