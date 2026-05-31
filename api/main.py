@@ -57,7 +57,7 @@ def get_document(document_id: str) -> DocumentResponse:
     return DocumentResponse(id=doc['id'], content=doc['content'])
 
 @app.post('/discord')
-def send_discord_message(request: Request, message: DiscordMessage) -> dict:
+def send_discord_message(message: DiscordMessage) -> dict:    
         post_to_discord(content=message.content, name=message.name)
         return {"status": "ok"}
         
