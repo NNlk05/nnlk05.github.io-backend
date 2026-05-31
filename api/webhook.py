@@ -1,4 +1,3 @@
-from base64 import b64decode
 from dotenv import load_dotenv
 from os import getenv
 from requests import post
